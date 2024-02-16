@@ -1,0 +1,39 @@
+.phone {
+  display: flex;
+  flex-direction: column;
+  border: 2px solid black;
+  border-radius: 10px;
+  overflow: hidden;
+  width: 350px;
+  height: 700px;
+   
+  & .phone-header {
+    background-color: aliceblue;
+    padding: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: pink;
+  }
+
+  & .tinder-list {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+  }
+
+  & .phone-footer {
+    background-color: aliceblue;
+    padding: 10px;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+  }
+
+  & p {
+    height: 100%;
+    display: grid;
+    place-content: center;
+    text-align: center;
+  }
+}
