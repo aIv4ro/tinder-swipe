@@ -1,10 +1,5 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import './tinder-card.css'
-
-type DraggingRef = {
-  initialX: number | null
-  diff: number
-}
 
 export function TinderCard ({
   src,
@@ -19,79 +14,54 @@ export function TinderCard ({
   age: number
   onSwipe: (liked: boolean) => void
 }) {
-  const articleRef = useRef<HTMLDivElement>(null)
-  const draggingRef = useRef<DraggingRef>({ initialX: null, diff: 0 })
+  const [initialX, setInitialX] = useState<number | null>(null)
+  const [xDiff, setXDiff] = useState(0)
 
   useEffect(() => {
-    const article = articleRef.current
-    if (article == null) return
-
-    function handleDragMove (evt: TouchEvent | MouseEvent) {
-      if (draggingRef.current.initialX == null) return
-      let currentX: number
-      if (evt instanceof TouchEvent) {
-        currentX = evt.touches[0].pageX
-      } else {
-        currentX = evt.pageX
-      }
-      draggingRef.current.diff = currentX - draggingRef.current.initialX!
-      const rotation = draggingRef.current.diff / 15
-      article!.style.transform = `translateX(${draggingRef.current.diff}px) rotate(${rotation}deg)`
-    }
-
-    function handleDragStart (evt: TouchEvent | MouseEvent) {
-      if (evt instanceof TouchEvent) {
-        draggingRef.current.initialX = evt.touches[0].pageX
-      } else {
-        draggingRef.current.initialX = evt.pageX
-      }      
-      article!.addEventListener('mousemove', handleDragMove)
-      article!.addEventListener('touchmove', handleDragMove, { passive: true })
-    }
-
     function handleDragEnd () {
-      if (draggingRef.current.initialX == null) return
-
-      article!.style.transition = 'transform 1s ease-in-out'
-      let liked: null | boolean = null
-      if (draggingRef.current.diff > 170) {
-        liked = true
-        article!.style.transform = `translateX(1000px) rotate(60deg)`
-      } else if (draggingRef.current.diff < -170) {
-        liked = false
-        article!.style.transform = `translateX(-1000px) rotate(-60deg)`
-      } else {
-        article!.style.transform = `translateX(0px) rotate(0deg)`
-      }
-
-      article!.addEventListener('transitionend', () => {
-        article!.style.transition = ''
-        if (liked != null) onSwipe(liked)
-      }, { once: true })
-
-      article!.removeEventListener('mousemove', handleDragMove)
-      article!.removeEventListener('touchmove', handleDragMove)
-      draggingRef.current.initialX = null
-      draggingRef.current.diff = 0
+      if (initialX == null) return
+      setXDiff(prev => {
+        return Math.abs(prev) > 170 ? Math.sign(prev) * 1000 : 0
+      })
+      setInitialX(null)
     }
-
-    article.addEventListener('touchstart', handleDragStart, { passive: true })
-    article.addEventListener('mousedown', handleDragStart)
-    window.addEventListener('touchend', handleDragEnd)
     window.addEventListener('mouseup', handleDragEnd)
-
+    window.addEventListener('touchend', handleDragEnd, { passive: true })
     return () => {
-      article.removeEventListener('touchstart', handleDragStart)
-      article.removeEventListener('mousedown', handleDragStart)
-      window.removeEventListener('touchend', handleDragEnd)
       window.removeEventListener('mouseup', handleDragEnd)
+      window.removeEventListener('touchend', handleDragEnd)
     }
-  }, [onSwipe])
+  }, [initialX])
+
+  function handleDragStart (evt: React.TouchEvent | React.MouseEvent) {
+    const {nativeEvent} = evt 
+    const pageX = nativeEvent instanceof TouchEvent ? nativeEvent.touches[0].pageX : nativeEvent.pageX
+    setInitialX(pageX)
+  }
+
+  function handleDragMove (evt: React.TouchEvent | React.MouseEvent) {
+    if (initialX == null) return
+    const {nativeEvent} = evt 
+    const pageX = nativeEvent instanceof TouchEvent ? nativeEvent.touches[0].pageX : nativeEvent.pageX
+    setXDiff(pageX - initialX)
+  }
+
+  const onDragMove = initialX != null ? handleDragMove : undefined
+  const rotation = xDiff / 15
+  const onTransitionEnd = Math.abs(xDiff) >= 1000 ? () => onSwipe(xDiff > 0) : undefined
 
   return (
     <article 
-      ref={articleRef}
       className='tinder-card'
+      onMouseDown={handleDragStart}
+      onTouchStart={handleDragStart}
+      onMouseMove={onDragMove}
+      onTouchMove={onDragMove}
+      onTransitionEnd={onTransitionEnd}
+      style={{
+        transform: `translateX(${xDiff}px) rotate(${rotation}deg)`,
+        transition: initialX != null ? 'none' : 'transform .6s ease-in-out'
+      }}
     >
       <h2>{name}, {age}</h2>
       <picture>
